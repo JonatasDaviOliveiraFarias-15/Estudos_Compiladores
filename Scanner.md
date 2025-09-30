@@ -250,8 +250,95 @@ class Scanner:
 Aqui a gente começa usando o ```@dataclass``` para nos auxiliar como já foi falado anteriormente.
 
 ```start```: marca o início do lexema atual.
+
 ```current```: posição atual que está sendo lida da string ```source```.
+
 ```line```: indica a linha que está sendo lida (para indicar possíveis erros por exemplo).
+
 ```source```: é o código inteiro digitado pelo usuário em forma de string.
+
 ```tokens```: é a lista final de todos os tokens que foram gerados pela leitura do scanner.
 
+Agora vamos adentrar dentro das funções que se encontram dentro da class scanner:
+
+### Método Principal
+
+```
+def scan_tokens(self) -> list[Token]:
+        while not self.is_at_end():
+            self.start=self.current
+            self.scan_token()
+        self.tokens.append(Token(TT.EOF, "", None, self.line))
+        return self.tokens
+```
+
+Aqui ele vai fazer o scan de tokens, enquanto não for o fim do código ele continua lendo, quando acabar ele adiciona um tokens especial de EOF (end of file/final de arquivo). Após isso ele vai retornar toda a lista de tokens que foi gerada. Para análisar os tokens ele usa o função ```scan_token()``` que veremos adiante.
+
+### Controle do Fim
+
+```
+def is_at_end(self) -> bool:
+    return self.current >= len(self.source)
+```
+
+Essa função vai controlar se o código chegou ao fim, básicamente se o ```current``` for maior ou igual ao tamanho do código, ele retorna ```True```, ou seja, ele chegou ao fim da leitura do código.
+
+### Leitura de um Token
+
+```
+def scan_token(self):
+        match self.advance():
+            case "(":
+                self.add_token(TT.LEFT_PAREN)
+            case ")":
+                self.add_token(TT.RIGHT_PAREN)
+            case "{":
+                self.add_token(TT.LEFT_BRACE)
+            case "}":
+                self.add_token(TT.RIGHT_BRACE)
+            case ",":
+                self.add_token(TT.COMMA)
+            case ".":
+                self.add_token(TT.DOT)
+            case "-":
+                self.add_token(TT.MINUS)
+            case "+":
+                self.add_token(TT.PLUS)
+            case ";":
+                self.add_token(TT.SEMICOLON)
+            case "*":
+                self.add_token(TT.STAR)
+            case "_":
+                self.add_token(TT.INVALID)
+            case "!" if self.match("="):
+                self.add_token(TT.BANG_EQUAL)
+            case "!":
+                self.add_token(TT.BANG)
+            case "=" if self.match("="):
+                self.add_token(TT.EQUAL_EQUAL)
+            case "=":
+                self.add_token(TT.EQUAL)
+            case "<" if self.match("="):
+                self.add_token(TT.LESS_EQUAL)
+            case "<":
+                self.add_token(TT.LESS)
+            case ">" if self.match("="):
+                self.add_token(TT.GREATER_EQUAL)
+            case ">":
+                self.add_token(TT.GREATER)
+            case "/" if self.match("/"):
+                while self.peek() != "\n" and not self.is_at_end():
+                    self.advance()
+            case "/":
+                self.add_token(TT.SLASH)
+            case " " | "\r" | "\t":
+                pass
+            case "\n":
+                self.line += 1
+            case '"' :
+                self.string()
+            case "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9":
+                self.number()
+            case c if is_alpha(c):
+                self.identifier()
+```
