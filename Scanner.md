@@ -342,3 +342,137 @@ def scan_token(self):
             case c if is_alpha(c):
                 self.identifier()
 ```
+
+Básicamente ele usa a função ```advance()``` (veremos a implementação dela mais a baixo) que consome um caractere e retorna ele e vai fazer a comparação para saber se é algum desses caracteres especiais, se for ele vai retornar o token do que for, se não ele vai entrar lá no final em is_alpha que basicamente mostra que ele não é nenhum caractere especial do teclado e sim uma sequência de letras que podem formar uma palavra reservada ou só uma palavra em uma string e então ele chama a função ```identifier()``` para identificar o que é.
+
+### String
+
+```
+def string(self):
+        while self.peek() != '"' and not self.is_at_end():
+            if self.peek() == "\n":
+                self.line += 1
+            self.advance()
+        if self.is_at_end():
+            self.add_token(TT.INVALID)
+            return
+        self.advance()
+        value = self.source[self.start + 1 : self.current - 1]
+        self.add_token(TT.STRING, value)
+```
+
+Essa função vai ler o valor que está entre "" e vai retornar ele como um tipo string. Ele vai usar a função ```peek()``` que veremos como implementar mais a frente mas que básicamente vai olhar o próximo caractere do código mas sem consumir ele. Enquanto esse caractere for diferente de fechar aspas e não tiver no fim do código, se usando o peek o próximo caractere for um \n ele vai pular pra próxima linha, também se tiver no fim do código ele vai retornar um token inválido, fora isso ele sempre vai ler o conteúdo todo e vai retornar ele como uma string.
+
+### Avançar no Texto
+
+```
+def advance(self) -> str:
+    char = self.source[self.current]
+    self.current += 1
+    return char
+```
+
+Ele pega o próximo caractere que está sendo análisado e atualiza o ```current```.
+
+### Adicionar Token
+
+```
+def add_token(self, type: TT, literal: Any = None):
+        text = self.source[self.start:self.current]
+        self.tokens.append(Token(type, text, self.line, literal))
+```
+
+Aqui ele cria o token no formato Token(o tipo dele, o texto dele, a linha dele, o valor literal dele).
+
+### Match (para 2 caracteres)
+
+```
+def match(self, expected: str) -> bool:
+        if self.is_at_end() or self.source[self.current] != expected:
+            return False
+        self.current += 1
+        return True
+```
+
+Básicamente se for o fim do arquivo ou se o próximo caractere for diferente do esperado ele irá retornar falso, ou seja, ele verifica se o próximo caractere bate com o esperado. Usado por exemplo para verificar se é um ! ou um != em um código.
+
+### Peek
+
+```
+def peek(self) -> str:
+    if self.is_at_end():
+        return ""
+    return self.source[self.current]
+```
+
+Aqui ele vai espionar e verificar qual o próximo caractere mas sem consumir ele.
+
+### Números
+
+```
+def number(self):
+    while is_digit(self.peek()):
+        self.advance()
+    if self.peek() == "." and is_digit(self.peek_next()):
+        self.advance()
+    while is_digit(self.peek()):
+        self.advance()
+    substring = self.source[self.start:self.current]
+    self.add_token(TT.NUMBER, float(substring))
+```
+
+Ele verifica enquanto for digito, caso tenha um . e mais coisa depois ele continua lendo pois é um numero ```float```, ou seja ele consome ele todo mesmo depois do . e retorna como um número float.
+
+### Identificador
+
+```
+def identifier(self):
+    while is_alpha_numeric(self.peek()):
+        self.advance()
+    text = self.source[self.start: self.current]
+    kind = KEYWORDS.get(text, TT.IDENTIFIER)
+    self.add_token(kind)
+```
+
+Ele vai servir para identificar se o que está sendo lido não seja uma palavra reservada da linguagem, se for ele vai ver qual delas é dentro de uma lista de KEYWORDS e após isso cria o token.
+
+### Funções Auxiliares
+
+```
+def tokenize(source: str) -> list[Token]:
+    scanner = Scanner(source)
+    return scanner.scan_tokens()
+def is_digit(char: str) -> bool:
+    return char.isdigit() and char.isascii()
+def is_alpha(char: str) -> bool:
+    return char == "_" or (char.isalpha() and char.isascii())
+def is_alpha_numeric(char: str) -> bool:
+    return is_alpha(char) or is_digit(char)
+```
+
+Aqui são algumas funções auxiliares que nos ajudaram durante o código, o ```tokenize()``` vem para criar um atalho na execução do scanner. O ```is_digit(), is_alpha(), is_alpha_numeric()``` vem para ajudar a classificar os caracteres.
+
+### KEYWORDS
+
+```
+KEYWORDS = {
+    "and": TT.AND,
+    "class": TT.CLASS,
+    "else": TT.ELSE,
+    "false": TT.FALSE,
+    "for": TT.FOR,
+    "fun": TT.FUN,
+    "if": TT.IF,
+    "nil": TT.NIL,
+    "or": TT.OR,
+    "print": TT.PRINT,
+    "return": TT.RETURN,
+    "super": TT.SUPER,
+    "this": TT.THIS,
+    "true": TT.TRUE,
+    "var": TT.VAR,
+    "while": TT.WHILE,
+}
+```
+
+É uma lista de palavras chaves reservadas da linguagem usada para auxiliar se o texto digitado é uma dessas palavras chaves ou não.
